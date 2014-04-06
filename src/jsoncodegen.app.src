@@ -1,0 +1,7 @@
+{application, jsoncodegen,
+ [
+  {description, "JSON Code Generation for Erlang records <---> JSON"},
+  {vsn, "0.1"},
+  {registered, []},
+  {env, []}
+ ]}.
