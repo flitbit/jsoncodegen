@@ -10,3 +10,7 @@ Erlang module for transforming well-defined records to JSON.
 
 * Code generation made easier using [`merl`](https://github.com/richcarl/merl)
 * Round-trip ISO 8601 formatting of datetimes using [`etz`](https://github.com/flitbit/etz)
+
+## Change Log
+
+Not yet released - first push on 2014-04-18. Commentary, issues, suggestions, pull reqeusts welcome.
