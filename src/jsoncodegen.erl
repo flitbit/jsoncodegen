@@ -152,6 +152,15 @@ encode_ejson_prop_from_field(R, #field{name=FieldName,type=[undefined,{list, _}]
 encode_ejson_prop_from_field(R, #field{name=FieldName,type=[undefined,{record,[_]}]}, Inner)
 	when is_atom(R) ->
 	?Q("ejson:add_property('@FieldName@', R#'@R@'.'@FieldName@', fun(It) -> to_ejson(It) end, _@Inner) ");
+encode_ejson_prop_from_field(R, #field{name=FieldName,type=[undefined,{string, _}]}, Inner)
+	when is_atom(R) ->
+	?Q("ejson:add_string('@FieldName@', R#'@R@'.'@FieldName@', _@Inner) ");
+encode_ejson_prop_from_field(R, #field{name=FieldName,type=[undefined,{calendar, datetime, _}]}, Inner)
+	when is_atom(R) ->
+	?Q("ejson:add_datetime('@FieldName@', R#'@R@'.'@FieldName@', _@Inner) ");
+encode_ejson_prop_from_field(R, #field{name=FieldName,type=[undefined,{etz, iso_time, _}]}, Inner)
+	when is_atom(R) ->
+	?Q("ejson:add_datetime('@FieldName@', R#'@R@'.'@FieldName@', _@Inner) ");
 encode_ejson_prop_from_field(R, #field{name=FieldName}, Inner)
 	when is_atom(R) ->
 	?Q("ejson:add_property('@FieldName@', R#'@R@'.'@FieldName@', _@Inner) ").
@@ -188,7 +197,7 @@ decode_ejson_field_ast(F, PropsVar) ->
 gen_decode_ejson_field_value(#field{name=N, type=[undefined,{list, [{record,[R]}]}]}, PropsVar) ->
 	RecordName = erl_syntax:atom(R),
 	FieldName = erl_syntax:atom(N),
-	?Q("lists:map(fun(It) -> from_ejson(_@RecordName, It) end, ejson:get_prop(_@FieldName, _@PropsVar))");
+	?Q("ejson:get_records(_@FieldName, _@RecordName, fun from_ejson/2, _@PropsVar)");
 gen_decode_ejson_field_value(#field{name=N, type=[undefined,{record,[R]}]}, PropsVar) ->
 	RecordName = erl_syntax:atom(R),
 	FieldName = erl_syntax:atom(N),
@@ -202,6 +211,9 @@ gen_decode_ejson_field_value(#field{name=N, type=[undefined,{string,[]}]}, Props
 gen_decode_ejson_field_value(#field{name=N, type=[undefined,{integer,[]}]}, PropsVar) ->
 	FieldName = erl_syntax:atom(N),
 	?Q("ejson:get_integer(_@FieldName, _@PropsVar)");
+gen_decode_ejson_field_value(#field{name=N, type=[undefined,{calendar, datetime, []}]}, PropsVar) ->
+	FieldName = erl_syntax:atom(N),
+	?Q("ejson:get_datetime(_@FieldName, _@PropsVar)");
 gen_decode_ejson_field_value(#field{name=N, type=[{atom,[]}]}, PropsVar) ->
 	FieldName = erl_syntax:atom(N),
 	?Q("ejson:get_atom(_@FieldName, _@PropsVar)");
@@ -320,18 +332,23 @@ take_types({type, _, union, TypeList}) ->
 take_types(T) ->
 	take_types([T], []).
 
-take_types([{type, _, union, U}|T], Acc) ->
+take_types([{type, _, union, U}|Rest], Acc) ->
 	% TODO: experiment with records to determine if this is even possible.
 	% none of my records result in this structure.
 	R = take_types(U, []),
-	take_types(T, [R|Acc]);
-take_types([{type, _, Type, []}|T], Acc) ->
-	take_types(T, [{Type, []}|Acc]);
-take_types([{type, _, Type, Args}|T], Acc) ->
+	take_types(Rest, [R|Acc]);
+take_types([{type, _, Type, []}|Rest], Acc) ->
+	take_types(Rest, [{Type, []}|Acc]);
+take_types([{type, _, Type, Args}|Rest], Acc) ->
 	A = take_types(Args, []),
-	take_types(T, [{Type, A}|Acc]);
-take_types([{atom, _, Atom}|T], Acc) ->
-	take_types(T, [Atom|Acc]);
+	take_types(Rest, [{Type, A}|Acc]);
+take_types([{remote_type, _, [M,T,[]]}|Rest], Acc) ->
+	take_types(Rest, [{erl_syntax:atom_value(M), erl_syntax:atom_value(T),[]}|Acc]);
+take_types([{remote_type, _, [M,T, Args]}|Rest], Acc) ->
+	A = take_types(Args, []),
+	take_types(Rest, [{erl_syntax:atom_value(M), erl_syntax:atom_value(T), A}|Acc]);
+take_types([{atom, _, Atom}|Rest], Acc) ->
+	take_types(Rest, [Atom|Acc]);
 take_types([], Acc) ->
 	lists:reverse(Acc).
 

@@ -2,12 +2,14 @@
 -record(sub_detail, {
 		ordinal :: integer(),
 		reason :: string(),
-		description :: string()
+		description :: string(),
+		date :: calendar:datetime()
 		}).
 
 -record(detail, {
 		notes :: string(),
-		detail :: #sub_detail{}
+		detail :: #sub_detail{},
+		timestamp :: etz:iso_time()
 		}).
 
 -record(master, {

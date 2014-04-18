@@ -2,19 +2,18 @@
 
 REBAR=./rebar
 
-all: deps compile before-compile
+all: deps compile test
 
 modules:
 	@cd deps/merl && $(MAKE)
 
 before-compile: modules
 
-
 compile: before-compile
 	@$(REBAR) compile
 
 app: before-compile
-	@$(REBAR) compile skip_deps=true
+	@$(REBAR) compile
 
 deps:
 	@$(REBAR) get-deps
@@ -28,10 +27,10 @@ clean: clean-modules
 distclean: clean
 	@$(REBAR) delete-deps
 
-test: app
-	rm -f ./test/records.erl
-	erl -noshell -pa $(PWD)/ebin -pa $(PWD)/deps/*/ebin \
-		-eval "jsoncodegen:make([\"test/test_records.hrl\"], [\"./\"], \"./test/\", \"records\")" \
+test: deps compile
+	- rm -f ./test/records.erl
+	- erl -noshell -pa $(PWD)/ebin -pa $(PWD)/deps/*/ebin \
+		-eval "jsoncodegen:make([\"test/test_records.hrl\"], [], \"./test/\", \"records\")" \
 		-s init stop
 	@$(REBAR) eunit skip_deps=true
 
